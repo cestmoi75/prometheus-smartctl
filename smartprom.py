@@ -4,7 +4,7 @@ import os
 import subprocess
 import time
 import re
-from typing import Tuple
+from typing import List, Tuple
 
 import prometheus_client
 
@@ -48,6 +48,41 @@ def run_smartctl_cmd(args: list) -> Tuple[str, int]:
     return stdout.decode("utf-8"), out.returncode
 
 
+def list_sata_devices() -> List[str]:
+    """
+    Runs `ls /dev/sata?` and returns matched device paths as a list.
+    """
+    result = subprocess.run(
+        "ls /dev/sata?",
+        shell=True,
+        capture_output=True,
+        text=True,
+    )
+    if result.returncode != 0:
+        return []
+
+    return [line.strip() for line in result.stdout.splitlines() if line.strip()]
+
+
+def check_for_synology(result_json):
+    if 'devices' not in result_json:
+        syno_disks = list_sata_devices()
+
+        if len(syno_disks) > 0:
+            # prepare name, type
+            devices = []
+
+            for line in syno_disks:
+                disk = {}
+                disk['name'] = line
+                disk['type'] = 'sat'
+                devices.append(disk)
+
+            result_json["devices"] = devices
+    else:
+        pass
+
+
 def get_drives() -> dict:
     """
     Returns a dictionary of devices and its types
@@ -55,6 +90,9 @@ def get_drives() -> dict:
     disks = {}
     result, _ = run_smartctl_cmd(["smartctl", "--scan-open", "--json=c"])
     result_json = json.loads(result)
+
+    # synology custom
+    check_for_synology(result_json)
 
     if "devices" in result_json:
         devices = result_json["devices"]
@@ -105,8 +143,8 @@ def get_device_info(dev: str) -> dict:
     if "user_capacity" in results and "bytes" in results["user_capacity"]:
         user_capacity = str(results["user_capacity"]["bytes"])
     return {
-        "model_family": results.get("model_family", "Unknown"),
-        "model_name": results.get("model_name", "Unknown"),
+        "model_family": results.get("model_family", results.get("scsi_vendor", "Unknown")),
+        "model_name": results.get("model_name", results.get("scsi_model_name", "Unknown")),
         "serial_number": results.get("serial_number", "Unknown"),
         "user_capacity": user_capacity,
     }
