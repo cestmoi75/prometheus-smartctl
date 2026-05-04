@@ -140,14 +140,39 @@ def get_device_info(dev: str) -> dict:
     results, _ = run_smartctl_cmd(["smartctl", "-i", "--json=c", dev])
     results = json.loads(results)
     user_capacity = "Unknown"
+    rotation_rate = "Unknown"
     if "user_capacity" in results and "bytes" in results["user_capacity"]:
         user_capacity = str(results["user_capacity"]["bytes"])
+
+    if "rotation_rate" in results and type(results["rotation_rate"]) is int:
+        rotation_rate = str(results["rotation_rate"])
+
     return {
-        "model_family": results.get("model_family", results.get("scsi_vendor", "Unknown")),
-        "model_name": results.get("model_name", results.get("scsi_model_name", "Unknown")),
+        "model_family": get_model_family(results),
+        "model_name": get_model_name(results),
         "serial_number": results.get("serial_number", "Unknown"),
         "user_capacity": user_capacity,
+        "rotation_rate": rotation_rate,
     }
+
+def get_model_family(results: dict) -> str:
+    ret = results.get("model_family", "Unknown")
+    if ret == "Unknown":
+        ret = results.get("scsi_vendor", "Unknown")
+    if ret == "Unknown":
+        ret = results.get("vendor", "Unknown")
+
+    return ret
+
+
+def get_model_name(results: dict) -> str:
+    ret = results.get("model_name", "Unknown")
+    if ret == "Unknown":
+        ret = results.get("scsi_model_name", "Unknown")
+    if ret == "Unknown":
+        ret = results.get("product", "Unknown")
+
+    return ret
 
 
 def get_smart_status(results: dict) -> int:
@@ -314,6 +339,7 @@ def collect():
                     model_name=drive_attrs["model_name"],
                     serial_number=drive_attrs["serial_number"],
                     user_capacity=drive_attrs["user_capacity"],
+                    rotation_rate=drive_attrs["rotation_rate"],
                 ).set(metric_val)
 
         except Exception as e:

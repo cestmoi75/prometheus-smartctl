@@ -15,4 +15,4 @@ EXPOSE 9902
 ENTRYPOINT ["/usr/local/bin/python", "-u", "/smartprom.py"]
 
 # HELP
-# docker build -t kyounghwan/prometheus-smartctl:test .
+# docker build -t kyounghwan/prometheus-smartctl:v1.0 .
