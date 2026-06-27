@@ -2,6 +2,7 @@
 import json
 import os
 import subprocess
+import sys
 import time
 import re
 from typing import List, Tuple
@@ -17,6 +18,7 @@ LABELS = [
     "model_name",
     "serial_number",
     "user_capacity",
+    "rotation_rate"
 ]
 DRIVES = {}
 METRICS = {}
@@ -375,4 +377,7 @@ def main():
 
 
 if __name__ == "__main__":
-    main()
+    try:
+        main()
+    except Exception as e:
+        sys.exc_info()
